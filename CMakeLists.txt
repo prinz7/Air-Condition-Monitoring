@@ -23,12 +23,12 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     message(STATUS "Using GCC")
 
     # Add GCC-specific flags
-    add_compile_options(-O3 -Wall -Wextra -Wpedantic)
+    target_compile_options(air_condition_monitoring PRIVATE -Wall -Wextra -Wpedantic -O3)
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     message(STATUS "Using Visual Studio")
 
     # Add Visual Studio-specific flags
-    add_compile_options(/O2 /W4)
+    target_compile_options(air_condition_monitoring PRIVATE /W4)
 else()
     message(FATAL_ERROR "Unsupported compiler")
 endif()
