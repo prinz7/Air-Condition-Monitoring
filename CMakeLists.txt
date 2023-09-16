@@ -3,6 +3,7 @@ project(AirConditionMonitoring)
 
 # BSEC library base path
 set(BSEC_INCLUDE_PATH ${CMAKE_SOURCE_DIR}/BSEC2.4.0.0_Generic_Release_23012023/algo/normal_version/inc)
+set(BSEC_LIBRARY_PATH ${CMAKE_SOURCE_DIR}/BSEC2.4.0.0_Generic_Release_23012023/algo/normal_version/bin/RaspberryPi/PiThree_ArmV8)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -11,6 +12,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_executable(air_condition_monitoring src/main.cpp)
 
 target_include_directories(air_condition_monitoring PRIVATE ${BSEC_INCLUDE_PATH})
+link_directories(${BSEC_LIBRARY_PATH})
+target_link_libraries(air_condition_monitoring PRIVATE ${BSEC_LIBRARY_PATH}/libalgobsec.a)
 
 if (WIN32)
     message(STATUS "Building on Windows")
