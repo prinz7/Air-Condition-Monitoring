@@ -5,9 +5,11 @@
 #include "bsec_interface.h"
 #include "bme68x.h"
 #include <chrono>
+#include <cstring>
 
 #define BSEC_CHECK_INPUT(x, shift)		(x & (1 << (shift-1)))
 #define BSEC_TOTAL_HEAT_DUR             UINT16_C(140)
+#define NUM_USED_OUTPUTS 9
 
 typedef void (*output_ready_fct)(int64_t timestamp, float gas_estimate_1, float gas_estimate_2, float gas_estimate_3, float gas_estimate_4,
     float raw_pressure, float raw_temp, float raw_humidity, float raw_gas, uint8_t raw_gas_index, bsec_library_return_t bsec_status);
@@ -294,6 +296,43 @@ void output_ready(int64_t timestamp, float gas_estimate_1, float gas_estimate_2,
     std::cout << "DATA. Pressure: " << raw_pressure << ". Temp: " << raw_temp << ". Humidity: " << raw_humidity << ". Gas: " << raw_gas << ". Gas Index: " << raw_gas_index << std::endl;
 }
 
+static bsec_library_return_t bme68x_bsec_update_subscription(float sample_rate)
+{
+    bsec_sensor_configuration_t requested_virtual_sensors[NUM_USED_OUTPUTS];
+    uint8_t n_requested_virtual_sensors = NUM_USED_OUTPUTS;
+
+    bsec_sensor_configuration_t required_sensor_settings[BSEC_MAX_PHYSICAL_SENSOR];
+    uint8_t n_required_sensor_settings = BSEC_MAX_PHYSICAL_SENSOR;
+
+    bsec_library_return_t status = BSEC_OK;
+
+    /* note: Virtual sensors as desired to be added here */
+    requested_virtual_sensors[0].sensor_id = BSEC_OUTPUT_GAS_ESTIMATE_1;
+    requested_virtual_sensors[0].sample_rate = sample_rate;
+    requested_virtual_sensors[1].sensor_id = BSEC_OUTPUT_GAS_ESTIMATE_2;
+    requested_virtual_sensors[1].sample_rate = sample_rate;
+    requested_virtual_sensors[2].sensor_id = BSEC_OUTPUT_GAS_ESTIMATE_3;
+    requested_virtual_sensors[2].sample_rate = sample_rate;
+    requested_virtual_sensors[3].sensor_id = BSEC_OUTPUT_GAS_ESTIMATE_4;
+    requested_virtual_sensors[3].sample_rate = sample_rate;
+    requested_virtual_sensors[4].sensor_id = BSEC_OUTPUT_RAW_PRESSURE;
+    requested_virtual_sensors[4].sample_rate = sample_rate;
+    requested_virtual_sensors[5].sensor_id = BSEC_OUTPUT_RAW_TEMPERATURE;
+    requested_virtual_sensors[5].sample_rate = sample_rate;
+    requested_virtual_sensors[6].sensor_id = BSEC_OUTPUT_RAW_HUMIDITY;
+    requested_virtual_sensors[6].sample_rate = sample_rate;
+    requested_virtual_sensors[7].sensor_id = BSEC_OUTPUT_RAW_GAS;
+    requested_virtual_sensors[7].sample_rate = sample_rate;
+    requested_virtual_sensors[8].sensor_id = BSEC_OUTPUT_RAW_GAS_INDEX;
+    requested_virtual_sensors[8].sample_rate = sample_rate;
+
+    /* Call bsec_update_subscription() to enable/disable the requested virtual sensors */
+    status = bsec_update_subscription(requested_virtual_sensors, n_requested_virtual_sensors, required_sensor_settings,
+        &n_required_sensor_settings);
+
+    return status;
+}
+
 int main()
 {
     auto x = bsec_init();
@@ -314,6 +353,13 @@ int main()
     if (bsec_status != BSEC_OK)
     {
         return -1;
+    }
+
+    auto sample_rate = BSEC_SAMPLE_RATE_LP;
+    auto bsec_status2 = bme68x_bsec_update_subscription(sample_rate);
+    if (bsec_status2 != BSEC_OK)
+    {
+        return -2;
     }
 
     /* Timestamp variables */
