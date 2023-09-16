@@ -3,7 +3,15 @@ project(AirConditionMonitoring)
 
 # BSEC library base path
 set(BSEC_INCLUDE_PATH ${CMAKE_SOURCE_DIR}/BSEC2.4.0.0_Generic_Release_23012023/algo/normal_version/inc)
-set(BSEC_LIBRARY_PATH ${CMAKE_SOURCE_DIR}/BSEC2.4.0.0_Generic_Release_23012023/algo/normal_version/bin/RaspberryPi/PiThree_ArmV8)
+if (WIN32)
+    message(STATUS "Building on Windows")
+    set(BSEC_LIBRARY_PATH ${CMAKE_SOURCE_DIR}/BSEC2.4.0.0_Generic_Release_23012023/algo/normal_version/bin/gcc/windows/x64/libalgobsec.lib)
+elseif (UNIX)
+    message(STATUS "Building on Linux/Unix")
+    set(BSEC_LIBRARY_PATH ${CMAKE_SOURCE_DIR}/BSEC2.4.0.0_Generic_Release_23012023/algo/normal_version/bin/RaspberryPi/PiThree_ArmV8/libalgobsec.a)
+else ()
+    message(FATAL_ERROR "Unsupported operating system")
+endif ()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -11,20 +19,19 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_executable(air_condition_monitoring src/main.cpp)
 
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    message(STATUS "Using GCC")
+
+    # Add GCC-specific flags
+    add_compile_options(-O3 -Wall -Wextra -Wpedantic)
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    message(STATUS "Using Visual Studio")
+
+    # Add Visual Studio-specific flags
+    add_compile_options(/O2 /W4)
+else()
+    message(FATAL_ERROR "Unsupported compiler")
+endif()
+
 target_include_directories(air_condition_monitoring PRIVATE ${BSEC_INCLUDE_PATH})
-link_directories(${BSEC_LIBRARY_PATH})
-target_link_libraries(air_condition_monitoring PRIVATE ${BSEC_LIBRARY_PATH}/libalgobsec.a)
-
-if (WIN32)
-    message(STATUS "Building on Windows")
-    # Set library folders for Windows
-  #  link_directories(${CMAKE_SOURCE_DIR}/BSEC2.4.0.0_Generic_Release_23012023/algo/normal_version/bin/gcc/windows/x64)
-elseif (UNIX)
-    message(STATUS "Building on Linux/Unix")
-    # Set library folders for Linux/Unix
- #   link_directories(${CMAKE_SOURCE_DIR}/BSEC2.4.0.0_Generic_Release_23012023/algo/normal_version/bin/RaspberryPi/PiThree_ArmV8)
-else ()
-    message(FATAL_ERROR "Unsupported operating system")
-endif ()
-
-#target_link_libraries(air_condition_monitoring PRIVATE libalgobsec)
+target_link_libraries(air_condition_monitoring PRIVATE ${BSEC_LIBRARY_PATH})
