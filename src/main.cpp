@@ -345,8 +345,25 @@ static bsec_library_return_t bme68x_bsec_update_subscription(float sample_rate)
     return status;
 }
 
+typedef struct {
+    /*! Result of API execution status */
+    int8_t bme68x_status;
+    /*! Result of BSEC library */
+    bsec_library_return_t bsec_status;
+}return_values_init;
+
 int main()
 {
+    return_values_init ret = { BME68X_OK, BSEC_OK };
+    memset(&bme68x_g, 0, sizeof(bme68x_g));
+
+    ret.bme68x_status = bme68x_init(&bme68x_g);
+    if (ret.bme68x_status != BME68X_OK)
+    {
+        std::cout << "Initialize of bme68x sensor failed with status: " << (int)ret.bme68x_status << std::endl;
+        return -7;
+    }
+
     auto x = bsec_init();
     if (x == bsec_library_return_t::BSEC_OK)
     {
