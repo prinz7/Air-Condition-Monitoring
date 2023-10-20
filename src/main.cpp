@@ -230,25 +230,37 @@ void setBme68xConfigForced(bsec_bme_settings_t* sensor_settings)
     /* Set the filter, odr, temperature, pressure and humidity settings */
     status = bme68x_get_conf(&conf, &bme68x_g);
     if (status != BME68X_OK)
+    {
+        std::cout << "Set forced mode failed. Get conf returned: " << (int)status << std::endl;
         return;
+    }
 
     conf.os_hum = sensor_settings->humidity_oversampling;
     conf.os_temp = sensor_settings->temperature_oversampling;
     conf.os_pres = sensor_settings->pressure_oversampling;
     status = bme68x_set_conf(&conf, &bme68x_g);
     if (status != BME68X_OK)
+    {
+        std::cout << "Set forced mode failed. Set conf returned: " << (int)status << std::endl;
         return;
+    }
 
     heatr_conf.enable = BME68X_ENABLE;
     heatr_conf.heatr_temp = sensor_settings->heater_temperature;
     heatr_conf.heatr_dur = sensor_settings->heater_duration;
     status = bme68x_set_heatr_conf(BME68X_FORCED_MODE, &heatr_conf, &bme68x_g);
     if (status != BME68X_OK)
+    {
+        std::cout << "Set forced mode failed. Set heatr conf returned: " << (int)status << std::endl;
         return;
+    }
 
     status = bme68x_set_op_mode(BME68X_FORCED_MODE, &bme68x_g);
     if (status != BME68X_OK)
+    {
+        std::cout << "Set forced mode failed. Set op mode returned: " << (int)status << std::endl;
         return;
+    }
 
     lastOpMode = BME68X_FORCED_MODE;
     opMode = BME68X_FORCED_MODE;
@@ -434,10 +446,11 @@ int main()
             if (sensor_settings.trigger_measurement && sensor_settings.op_mode != BME68X_SLEEP_MODE)
             {
                 nFields = 0;
-                bme68x_get_data(lastOpMode, &sensor_data[0], &nFields, &bme68x_g);
+                auto getResult = bme68x_get_data(lastOpMode, &sensor_data[0], &nFields, &bme68x_g);
                 iFields = 0;
                 if (nFields)
                 {
+                    std::cout << "Got data: " << nFields << std::endl;
                     do
                     {
                         nFieldsLeft = getData(&data);
@@ -450,6 +463,10 @@ int main()
                             }
                         }
                     } while (nFieldsLeft);
+                }
+                else
+                {
+                    std::cout << "Got no data. Result: " << (int)getResult << std::endl;
                 }
             }
 
