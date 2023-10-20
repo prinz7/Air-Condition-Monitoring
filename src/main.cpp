@@ -10,10 +10,10 @@
 
 #define BSEC_CHECK_INPUT(x, shift)		(x & (1 << (shift-1)))
 #define BSEC_TOTAL_HEAT_DUR             UINT16_C(140)
-#define NUM_USED_OUTPUTS 3
+#define NUM_USED_OUTPUTS 7
 
 typedef void (*output_ready_fct)(int64_t timestamp, float gas_estimate_1, float gas_estimate_2, float gas_estimate_3, float gas_estimate_4,
-    float raw_pressure, float raw_temp, float raw_humidity, float raw_gas, uint8_t raw_gas_index, bsec_library_return_t bsec_status);
+    float raw_pressure, float raw_temp, float raw_humidity, float raw_gas, uint8_t raw_gas_index, bsec_library_return_t bsec_status, float temp, float hum, float iaq, float co2);
 
 /* Global sensor APIs data structure */
 static struct bme68x_dev bme68x_g;
@@ -93,6 +93,10 @@ static bsec_library_return_t bme68x_bsec_process_data(bsec_input_t* bsec_inputs,
     float raw_humidity = 0.0f;
     float raw_gas = 0.0f;
     uint8_t raw_gas_index = 0;
+    float temp = 0.0f;
+    float humidity = 0.0f;
+    float co2 = 0.0f;
+    float iaq = 0.0f;
 
     /* Check if something should be processed by BSEC */
     if (num_bsec_inputs > 0)
@@ -140,6 +144,18 @@ static bsec_library_return_t bme68x_bsec_process_data(bsec_input_t* bsec_inputs,
             case BSEC_OUTPUT_RAW_GAS_INDEX:
                 raw_gas_index = (uint8_t)bsec_outputs[index].signal;
                 break;
+            case BSEC_OUTPUT_CO2_EQUIVALENT:
+                co2 = bsec_outputs[index].signal;
+                break;
+            case BSEC_OUTPUT_IAQ:
+                iaq = bsec_outputs[index].signal;
+                break;
+            case BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_HUMIDITY:
+                humidity = bsec_outputs[index].signal;
+                break;
+            case BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE:
+                temp = bsec_outputs[index].signal;
+                break;
             default:
                 continue;
             }
@@ -149,7 +165,7 @@ static bsec_library_return_t bme68x_bsec_process_data(bsec_input_t* bsec_inputs,
         }
 
         /* Pass the extracted outputs to the user provided output_ready() function. */
-        output_ready(timestamp, gas_estimate_1, gas_estimate_2, gas_estimate_3, gas_estimate_4, raw_pressure, raw_temp, raw_humidity, raw_gas, raw_gas_index, bsec_status);
+        output_ready(timestamp, gas_estimate_1, gas_estimate_2, gas_estimate_3, gas_estimate_4, raw_pressure, raw_temp, raw_humidity, raw_gas, raw_gas_index, bsec_status, temp, humidity, iaq, co2);
     }
     return bsec_status;
 }
@@ -304,9 +320,9 @@ void setBme68xConfigParallel(bsec_bme_settings_t* sensor_settings)
 }
 
 void output_ready(int64_t timestamp, float gas_estimate_1, float gas_estimate_2, float gas_estimate_3, float gas_estimate_4,
-    float raw_pressure, float raw_temp, float raw_humidity, float raw_gas, uint8_t raw_gas_index, bsec_library_return_t bsec_status)
+    float raw_pressure, float raw_temp, float raw_humidity, float raw_gas, uint8_t raw_gas_index, bsec_library_return_t bsec_status, float temp, float humidity, float iaq, float co2)
 {
-    std::cout << "DATA. Pressure: " << raw_pressure << ". Temp: " << raw_temp << ". Humidity: " << raw_humidity << ". Gas: " << raw_gas << ". Gas Index: " << raw_gas_index << std::endl;
+    std::cout << "DATA. Raw Pressure: " << raw_pressure << ". Raw Temp: " << raw_temp << ". Raw Humidity: " << raw_humidity << ". Raw Gas: " << raw_gas << ". Raw Gas Index: " << raw_gas_index << ". Temp: " << temp << ". Humidity: " << humidity << ". IAQ: " << iaq << ". CO2: " << co2 << std::endl;
 }
 
 static bsec_library_return_t bme68x_bsec_update_subscription(float sample_rate)
@@ -326,6 +342,14 @@ static bsec_library_return_t bme68x_bsec_update_subscription(float sample_rate)
     requested_virtual_sensors[1].sample_rate = sample_rate;
     requested_virtual_sensors[2].sensor_id = BSEC_OUTPUT_RAW_HUMIDITY;
     requested_virtual_sensors[2].sample_rate = sample_rate;
+    requested_virtual_sensors[3].sensor_id = BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE;
+    requested_virtual_sensors[3].sample_rate = sample_rate;
+    requested_virtual_sensors[4].sensor_id = BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_HUMIDITY;
+    requested_virtual_sensors[4].sample_rate = sample_rate;
+    requested_virtual_sensors[5].sensor_id = BSEC_OUTPUT_CO2_EQUIVALENT;
+    requested_virtual_sensors[5].sample_rate = sample_rate;
+    requested_virtual_sensors[6].sensor_id = BSEC_OUTPUT_IAQ;
+    requested_virtual_sensors[6].sample_rate = sample_rate;
     //requested_virtual_sensors[0].sensor_id = BSEC_OUTPUT_GAS_ESTIMATE_1;
     //requested_virtual_sensors[0].sample_rate = sample_rate;
     //requested_virtual_sensors[1].sensor_id = BSEC_OUTPUT_GAS_ESTIMATE_2;
@@ -370,12 +394,12 @@ int main()
     bcm2835_i2c_set_baudrate(100000);
 
     bme68x_g.intf = BME68X_I2C_INTF;
-    bme68x_g.read = [](uint8_t reg_addr, uint8_t *reg_data, uint32_t len, void *stuff) -> int8_t {
+    bme68x_g.read = [](uint8_t reg_addr, uint8_t* reg_data, uint32_t len, void* stuff) -> int8_t {
         bcm2835_i2c_setSlaveAddress(0x77);
         bcm2835_i2c_read_register_rs(reinterpret_cast<char*>(&reg_addr), reinterpret_cast<char*>(reg_data), len);
         return 0;
-    };
-    bme68x_g.write = [](uint8_t reg_addr, const uint8_t *reg_data, uint32_t len, void *stuff) -> int8_t {
+        };
+    bme68x_g.write = [](uint8_t reg_addr, const uint8_t* reg_data, uint32_t len, void* stuff) -> int8_t {
         bcm2835_i2c_setSlaveAddress(0x77);
         char buf[len + 1];
         buf[0] = reg_addr;
@@ -384,10 +408,10 @@ int main()
         }
         bcm2835_i2c_write(buf, len + 1);
         return 0;
-    };
-    bme68x_g.delay_us = [](uint32_t period, void *stuff) {
+        };
+    bme68x_g.delay_us = [](uint32_t period, void* stuff) {
         bcm2835_delayMicroseconds(period);
-    };
+        };
     bme68x_g.amb_temp = 20;
 
     ret.bme68x_status = bme68x_init(&bme68x_g);
@@ -419,6 +443,7 @@ int main()
 
     auto sample_rate = BSEC_SAMPLE_RATE_LP;
     auto bsec_status2 = bme68x_bsec_update_subscription(sample_rate);
+
     if (bsec_status2 != BSEC_OK)
     {
         std::cout << "Subscription failed: " << bsec_status2 << std::endl;
