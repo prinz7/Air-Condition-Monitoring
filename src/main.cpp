@@ -9,7 +9,7 @@
 
 #define BSEC_CHECK_INPUT(x, shift)		(x & (1 << (shift-1)))
 #define BSEC_TOTAL_HEAT_DUR             UINT16_C(140)
-#define NUM_USED_OUTPUTS 9
+#define NUM_USED_OUTPUTS 3
 
 typedef void (*output_ready_fct)(int64_t timestamp, float gas_estimate_1, float gas_estimate_2, float gas_estimate_3, float gas_estimate_4,
     float raw_pressure, float raw_temp, float raw_humidity, float raw_gas, uint8_t raw_gas_index, bsec_library_return_t bsec_status);
@@ -307,24 +307,24 @@ static bsec_library_return_t bme68x_bsec_update_subscription(float sample_rate)
     bsec_library_return_t status = BSEC_OK;
 
     /* note: Virtual sensors as desired to be added here */
-    requested_virtual_sensors[0].sensor_id = BSEC_OUTPUT_GAS_ESTIMATE_1;
+    requested_virtual_sensors[0].sensor_id = BSEC_OUTPUT_RAW_PRESSURE;
     requested_virtual_sensors[0].sample_rate = sample_rate;
-    requested_virtual_sensors[1].sensor_id = BSEC_OUTPUT_GAS_ESTIMATE_2;
+    requested_virtual_sensors[1].sensor_id = BSEC_OUTPUT_RAW_TEMPERATURE;
     requested_virtual_sensors[1].sample_rate = sample_rate;
-    requested_virtual_sensors[2].sensor_id = BSEC_OUTPUT_GAS_ESTIMATE_3;
+    requested_virtual_sensors[2].sensor_id = BSEC_OUTPUT_RAW_HUMIDITY;
     requested_virtual_sensors[2].sample_rate = sample_rate;
-    requested_virtual_sensors[3].sensor_id = BSEC_OUTPUT_GAS_ESTIMATE_4;
-    requested_virtual_sensors[3].sample_rate = sample_rate;
-    requested_virtual_sensors[4].sensor_id = BSEC_OUTPUT_RAW_PRESSURE;
-    requested_virtual_sensors[4].sample_rate = sample_rate;
-    requested_virtual_sensors[5].sensor_id = BSEC_OUTPUT_RAW_TEMPERATURE;
-    requested_virtual_sensors[5].sample_rate = sample_rate;
-    requested_virtual_sensors[6].sensor_id = BSEC_OUTPUT_RAW_HUMIDITY;
-    requested_virtual_sensors[6].sample_rate = sample_rate;
-    requested_virtual_sensors[7].sensor_id = BSEC_OUTPUT_RAW_GAS;
-    requested_virtual_sensors[7].sample_rate = sample_rate;
-    requested_virtual_sensors[8].sensor_id = BSEC_OUTPUT_RAW_GAS_INDEX;
-    requested_virtual_sensors[8].sample_rate = sample_rate;
+    //requested_virtual_sensors[0].sensor_id = BSEC_OUTPUT_GAS_ESTIMATE_1;
+    //requested_virtual_sensors[0].sample_rate = sample_rate;
+    //requested_virtual_sensors[1].sensor_id = BSEC_OUTPUT_GAS_ESTIMATE_2;
+    //requested_virtual_sensors[1].sample_rate = sample_rate;
+    //requested_virtual_sensors[2].sensor_id = BSEC_OUTPUT_GAS_ESTIMATE_3;
+    //requested_virtual_sensors[2].sample_rate = sample_rate;
+    //requested_virtual_sensors[3].sensor_id = BSEC_OUTPUT_GAS_ESTIMATE_4;
+    //requested_virtual_sensors[3].sample_rate = sample_rate;
+    //requested_virtual_sensors[7].sensor_id = BSEC_OUTPUT_RAW_GAS;
+    //requested_virtual_sensors[7].sample_rate = sample_rate;
+    //requested_virtual_sensors[8].sensor_id = BSEC_OUTPUT_RAW_GAS_INDEX;
+    //requested_virtual_sensors[8].sample_rate = sample_rate;
 
     /* Call bsec_update_subscription() to enable/disable the requested virtual sensors */
     status = bsec_update_subscription(requested_virtual_sensors, n_requested_virtual_sensors, required_sensor_settings,
@@ -359,6 +359,7 @@ int main()
     auto bsec_status2 = bme68x_bsec_update_subscription(sample_rate);
     if (bsec_status2 != BSEC_OK)
     {
+        std::cout << "Subscription failed: " << bsec_status2 << std::endl;
         return -2;
     }
 
@@ -407,15 +408,18 @@ int main()
             switch (sensor_settings.op_mode)
             {
             case BME68X_FORCED_MODE:
+                std::cout << "FORCED MODE" << std::endl;
                 setBme68xConfigForced(&sensor_settings);
                 break;
             case BME68X_PARALLEL_MODE:
+                std::cout << "PARALLEL MODE" << std::endl;
                 if (opMode != sensor_settings.op_mode)
                 {
                     setBme68xConfigParallel(&sensor_settings);
                 }
                 break;
             case BME68X_SLEEP_MODE:
+                std::cout << "SLEEP MODE" << std::endl;
                 if (opMode != sensor_settings.op_mode)
                 {
                     ret_val = bme68x_set_op_mode(BME68X_SLEEP_MODE, &bme68x_g);
