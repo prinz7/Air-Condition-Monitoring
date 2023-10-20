@@ -24,6 +24,13 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_library(bme_library ${BME_INCLUDE_PATH}/bme68x.c ${BME_CONFIG_INCLUDE_PATH}/bsec_selectivity.c)
 target_include_directories(bme_library PUBLIC ${BME_INCLUDE_PATH} ${BME_CONFIG_INCLUDE_PATH})
 
+find_library(BCM2835_LIBRARY bcm2835)
+if(BCM2835_LIBRARY)
+    message(STATUS "Found bcm2835 library: ${BCM2835_LIBRARY}")
+else()
+    message(FATAL_ERROR "bcm2835 library not found")
+endif()
+
 add_executable(air_condition_monitoring src/main.cpp)
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
@@ -41,4 +48,4 @@ else()
 endif()
 
 target_include_directories(air_condition_monitoring PRIVATE ${BSEC_INCLUDE_PATH} ${BME_INCLUDE_PATH} ${BME_CONFIG_INCLUDE_PATH} include)
-target_link_libraries(air_condition_monitoring PRIVATE ${BSEC_LIBRARY_PATH} bme_library)
+target_link_libraries(air_condition_monitoring PRIVATE ${BSEC_LIBRARY_PATH} bme_library ${BCM2835_LIBRARY})

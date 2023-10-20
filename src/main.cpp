@@ -6,6 +6,7 @@
 #include "bme68x.h"
 #include <chrono>
 #include <cstring>
+#include <bcm2835.h>
 
 #define BSEC_CHECK_INPUT(x, shift)		(x & (1 << (shift-1)))
 #define BSEC_TOTAL_HEAT_DUR             UINT16_C(140)
@@ -356,6 +357,38 @@ int main()
 {
     return_values_init ret = { BME68X_OK, BSEC_OK };
     memset(&bme68x_g, 0, sizeof(bme68x_g));
+    if (!bcm2835_init()) {
+        std::cerr << "bcm2835_init failed. Are you running as root?" << std::endl;
+        return 1;
+    }
+
+    if (!bcm2835_i2c_begin()) {
+        printf("bcm2835_i2c_begin failed. Are you running as root?\n");
+        return 1;
+    }
+
+    bcm2835_i2c_set_baudrate(100000);
+
+    bme68x_g.intf = BME68X_I2C_INTF;
+    bme68x_g.read = [](uint8_t reg_addr, uint8_t *reg_data, uint32_t len, void *stuff) -> int8_t {
+        bcm2835_i2c_setSlaveAddress(0x77);
+        bcm2835_i2c_read_register_rs(reinterpret_cast<char*>(&reg_addr), reinterpret_cast<char*>(reg_data), len);
+        return 0;
+    };
+    bme68x_g.write = [](uint8_t reg_addr, const uint8_t *reg_data, uint32_t len, void *stuff) -> int8_t {
+        bcm2835_i2c_setSlaveAddress(0x77);
+        char buf[len + 1];
+        buf[0] = reg_addr;
+        for (uint16_t i = 0; i < len; ++i) {
+            buf[i + 1] = reg_data[i];
+        }
+        bcm2835_i2c_write(buf, len + 1);
+        return 0;
+    };
+    bme68x_g.delay_us = [](uint32_t period, void *stuff) {
+        bcm2835_delayMicroseconds(period);
+    };
+    bme68x_g.amb_temp = 20;
 
     ret.bme68x_status = bme68x_init(&bme68x_g);
     if (ret.bme68x_status != BME68X_OK)
@@ -491,6 +524,9 @@ int main()
             n_samples++;
         }
     }
+
+    bcm2835_i2c_end();
+    bcm2835_close();
 
     return 0;
 }
